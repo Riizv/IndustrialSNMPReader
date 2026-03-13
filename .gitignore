@@ -5,6 +5,9 @@ target/
 !**/dist/
 .kotlin
 
+*.dmg
+*.jar
+
 ### IntelliJ IDEA ###
 .idea/modules.xml
 .idea/jarRepositories.xml
