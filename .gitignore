@@ -9,6 +9,9 @@ target/
 *.jar
 
 ### IntelliJ IDEA ###
+./.idea
+out/
+gen/
 *.iws
 *.iml
 *.ipr
