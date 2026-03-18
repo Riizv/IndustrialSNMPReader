@@ -6,145 +6,100 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
-
-import java.io.IOException;
-import java.util.Optional;
-
 import javafx.concurrent.Task;
-
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.util.Duration;
+import java.io.IOException;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
 public class IndustrialSNMPController {
 
-    @FXML private TableView<User> userTable;
-    @FXML private TableColumn<User, Integer> colId;
-    @FXML private TableColumn<User, String> colName;
-    @FXML private TableColumn<User, String> colEmail;
+    @FXML private TableView<Device> deviceTable;
+    @FXML private TableColumn<Device, Integer> colId;
+    @FXML private TableColumn<Device, String> colIp;
+    @FXML private TableColumn<Device, String> colOid;
+    @FXML private TableColumn<Device, String> colTemp;
+    @FXML private TableColumn<Device, String> colUpdate;
 
-    @FXML private TextField nameField;
-    @FXML private TextField emailField;
+    @FXML private TextField ipField;
+    @FXML private TextField oidField;
     @FXML private Label statusLabel;
 
-    private final ObservableList<User> userList = FXCollections.observableArrayList();
+    private final ObservableList<Device> deviceList = FXCollections.observableArrayList();
     private int nextId = 1;
     private Timeline autoRefreshTimeline;
 
     @FXML
     public void initialize() {
-        // Powiązanie kolumn z modelem
-        colId.setCellValueFactory(cellData -> cellData.getValue().idProperty().asObject());
-        colName.setCellValueFactory(cellData -> cellData.getValue().nameProperty());
-        colEmail.setCellValueFactory(cellData -> cellData.getValue().emailProperty());
+        colId.setCellValueFactory(d -> d.getValue().idProperty().asObject());
+        colIp.setCellValueFactory(d -> d.getValue().ipAddressProperty());
+        colOid.setCellValueFactory(d -> d.getValue().oidProperty());
+        colTemp.setCellValueFactory(d -> d.getValue().temperatureProperty());
+        colUpdate.setCellValueFactory(d -> d.getValue().lastUpdateProperty());
 
-        userTable.setItems(userList);
+        deviceTable.setItems(deviceList);
 
-        // Słuchacz wyboru w tabeli
-        userTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null) {
-                nameField.setText(newVal.getIP());
-                emailField.setText(newVal.getTemp());
+        autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(60), e -> refreshAllDevices()));
+        autoRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
+        autoRefreshTimeline.play();
+    }
+
+    @FXML
+    protected void onAddDevice() {
+        if (!ipField.getText().isEmpty() && !oidField.getText().isEmpty()) {
+            Device newDev = new Device(nextId++, ipField.getText(), oidField.getText());
+            deviceList.add(newDev);
+            updateSingleDevice(newDev);
+            ipField.clear();
+            oidField.clear();
+            statusLabel.setText("Dodano urządzenie.");
+        }
+    }
+
+    private void refreshAllDevices() {
+        deviceList.forEach(this::updateSingleDevice);
+    }
+
+    private void updateSingleDevice(Device device) {
+        Task<String> task = new Task<>() {
+            @Override protected String call() {
+                return SNMPController.getSnmpValue(device.getIpAddress(), "public", device.getOid());
             }
-        });
+        };
 
-
-        // Konfiguracja auto-odświeżania co 60 sekund
-        autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(60), event -> {
-            System.out.println("Auto-odświeżanie SNMP...");
-            refreshTemperature(); // Wywołuje Twoją istniejącą metodę z Taskiem
-        }));
-
-        autoRefreshTimeline.setCycleCount(Timeline.INDEFINITE); // Powtarzaj w nieskończoność
-        autoRefreshTimeline.play(); // Start
-    }
-
-    @FXML
-    protected void onAddUser() {
-        if (!nameField.getText().isEmpty()) {
-            userList.add(new User(nextId++, nameField.getText(), emailField.getText()));
-            clearFields();
-            statusLabel.setText("Dodano użytkownika.");
-        }
-    }
-
-    @FXML
-    protected void onUpdateUser() {
-        User selected = userTable.getSelectionModel().getSelectedItem();
-        if (selected != null) {
-            selected.setName(nameField.getText());
-            selected.setEmail(emailField.getText());
-            userTable.refresh();
-            statusLabel.setText("Zaktualizowano dane.");
-        }
-    }
-
-    @FXML
-    protected void onDeleteUser() {
-        User selected = userTable.getSelectionModel().getSelectedItem();
-        if (selected != null) {
-            // Mały bonus: proste potwierdzenie przed usunięciem
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Czy na pewno usunąć " + selected.getIP() + "?", ButtonType.YES, ButtonType.NO);
-            alert.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.YES) {
-                    userList.remove(selected);
-                    clearFields();
-                    statusLabel.setText("Usunięto użytkownika.");
+        task.setOnSucceeded(e -> {
+            String res = task.getValue();
+            String time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+            if (res != null && !res.contains("Err") && !res.equals("Błędny OID")) {
+                try {
+                    // MikroTik hAP ax3: wartość / 10
+                    double t = Double.parseDouble(res) / 10.0;
+                    device.setTemperature(t + " °C");
+                } catch (Exception ex) {
+                    device.setTemperature(res);
                 }
-            });
-        }
+            } else {
+                device.setTemperature(res);
+            }
+            device.setLastUpdate(time);
+        });
+        new Thread(task).start();
+    }
+
+    @FXML
+    protected void onDeleteDevice() {
+        Device selected = deviceTable.getSelectionModel().getSelectedItem();
+        if (selected != null) { deviceList.remove(selected); }
     }
 
     @FXML
     protected void onLogoutClick() throws IOException {
-        if (autoRefreshTimeline != null) {
-            autoRefreshTimeline.stop();
-        }
-        Stage stage = (Stage) userTable.getScene().getWindow();
+        if (autoRefreshTimeline != null) autoRefreshTimeline.stop();
+        Stage stage = (Stage) deviceTable.getScene().getWindow();
         FXMLLoader loader = new FXMLLoader(getClass().getResource("login-view.fxml"));
         stage.setScene(new Scene(loader.load(), 600, 400));
-        stage.setTitle("Logowanie");
     }
-
-    private void clearFields() {
-        nameField.clear();
-        emailField.clear();
-    }
-
-    @FXML
-    protected void refreshTemperature() {
-        Task<String> tempTask = new Task<>() {
-            @Override
-            protected String call() throws Exception {
-                // Pobieramy dane (przykład dla MikroTika)
-                return SNMPController.getSnmpValue("192.168.88.1", "public", "1.3.6.1.4.1.14988.1.1.3.11.0");
-            }
-        };
-
-        tempTask.setOnSucceeded(e -> {
-            String result = tempTask.getValue();
-            String time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-
-            try {
-                // MikroTik: wynik/10, Hirschmann: wynik
-                double temp = Double.parseDouble(result) / 10.0;
-                statusLabel.setText("Temp: " + temp + "°C (Updated on: " + time + ")");
-
-                // Logika kolorów
-                if (temp > 50) statusLabel.setStyle("-fx-text-fill: red;");
-                else statusLabel.setStyle("-fx-text-fill: green;");
-
-            } catch (Exception ex) {
-                statusLabel.setText("Data error: " + result + " (" + time + ")");
-            }
-        });
-
-        new Thread(tempTask).start();
-    }
-
 }

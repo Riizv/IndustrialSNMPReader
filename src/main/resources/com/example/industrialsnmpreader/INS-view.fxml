@@ -1,77 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
 
-<BorderPane prefHeight="500.0" prefWidth="800.0" xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.example.industrialsnmpreader.IndustrialSNMPController"
-            style="-fx-background-color: #f4f4f4;">
-
+<BorderPane prefHeight="500.0" prefWidth="900.0" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.example.industrialsnmpreader.IndustrialSNMPController">
     <top>
         <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: #004990; -fx-padding: 15;">
-            <VBox HBox.hgrow="ALWAYS">
-                <Label text="Industrial SNMP Reader" textFill="WHITE">
-                    <font><Font name="System Bold" size="20.0" /></font>
-                </Label>
-                <Label text="Zalogowano jako: Administrator" textFill="#bdc3c7" />
-            </VBox>
-
-            <Button text="Wyloguj" onAction="#onLogoutClick"
-                    style="-fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"/>
+            <Label text="Industrial SNMP Monitor" textFill="WHITE" style="-fx-font-size: 20; -fx-font-weight: bold;" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="Wyloguj" onAction="#onLogoutClick" />
         </HBox>
     </top>
-
     <center>
-        <SplitPane dividerPositions="0.6">
-            <items>
-                <VBox spacing="10" style="-fx-padding: 10;">
-                    <Label text="Lista Użytkowników" style="-fx-font-weight: bold;" />
-                    <TableView fx:id="userTable" VBox.vgrow="ALWAYS">
-                        <columns>
-                            <TableColumn fx:id="colId" text="ID" prefWidth="50" />
-                            <TableColumn fx:id="colName" text="Imię" prefWidth="150" />
-                            <TableColumn fx:id="colEmail" text="Email" prefWidth="200" />
-                        </columns>
-                    </TableView>
-                </VBox>
-
-                <VBox spacing="15" style="-fx-padding: 20; -fx-background-color: white;">
-                    <Label text="Szczegóły / Edycja" style="-fx-font-weight: bold; -fx-font-size: 16;" />
-
-                    <VBox spacing="5">
-                        <Label text="Imię:" />
-                        <TextField fx:id="nameField" promptText="Wpisz imię..." />
-                    </VBox>
-
-                    <VBox spacing="5">
-                        <Label text="Email:" />
-                        <TextField fx:id="emailField" promptText="Wpisz email..." />
-                    </VBox>
-
-                    <Separator />
-
-                    <VBox spacing="10">
-                        <Button text="Dodaj Nowy" defaultButton="true" onAction="#onAddUser" maxWidth="Infinity"
-                                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;"/>
-                        <Button text="Aktualizuj" onAction="#onUpdateUser" maxWidth="Infinity"
-                                style="-fx-background-color: #2980b9; -fx-text-fill: white;"/>
-                        <Button text="Usuń Wybrany" onAction="#onDeleteUser" maxWidth="Infinity"
-                                style="-fx-background-color: #e74c3c; -fx-text-fill: white;"/>
-                    </VBox>
-
-                    <Region VBox.vgrow="ALWAYS" />
-                    <Label fx:id="statusLabel" text="Gotowy" textFill="#7f8c8d" />
-                </VBox>
-            </items>
+        <SplitPane dividerPositions="0.7">
+            <VBox spacing="10" style="-fx-padding: 10;">
+                <TableView fx:id="deviceTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="colId" text="ID" prefWidth="40" />
+                        <TableColumn fx:id="colIp" text="IP" prefWidth="120" />
+                        <TableColumn fx:id="colOid" text="OID" prefWidth="180" />
+                        <TableColumn fx:id="colTemp" text="Temp." prefWidth="80" />
+                        <TableColumn fx:id="colUpdate" text="Odczyt" prefWidth="120" />
+                    </columns>
+                </TableView>
+            </VBox>
+            <VBox spacing="15" style="-fx-padding: 20;">
+                <Label text="Dodaj Urządzenie" style="-fx-font-weight: bold;" />
+                <TextField fx:id="ipField" promptText="Adres IP" />
+                <TextField fx:id="oidField" promptText="OID" />
+                <Button text="Dodaj" onAction="#onAddDevice" maxWidth="Infinity" />
+                <Button text="Usuń" onAction="#onDeleteDevice" maxWidth="Infinity" />
+                <Label fx:id="statusLabel" text="Gotowy" />
+            </VBox>
         </SplitPane>
     </center>
-    <bottom>
-        <HBox spacing="10" style="-fx-padding: 10; -fx-background-color: #ecf0f1;">
-            <Button text="Sprawdź Temp. Switcha" onAction="#refreshTemperature"
-                    style="-fx-background-color: #9b59b6; -fx-text-fill: white;"/>
-            <Label fx:id="statusLabel" text="Gotowy" />
-        </HBox>
-    </bottom>
 </BorderPane>

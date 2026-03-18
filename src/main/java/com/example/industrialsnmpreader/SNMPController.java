@@ -9,6 +9,7 @@ import org.snmp4j.transport.DefaultUdpTransportMapping;
 public class SNMPController {
 
     public static String getSnmpValue(String ipAddress, String community, String oidString) {
+        Snmp snmp = null;
         try {
             Address targetAddress = GenericAddress.parse("udp:" + ipAddress + "/161");
             CommunityTarget<Address> target = new CommunityTarget<>();
@@ -23,21 +24,29 @@ public class SNMPController {
             pdu.setType(PDU.GET);
 
             TransportMapping<? extends Address> transport = new DefaultUdpTransportMapping();
+            snmp = new Snmp(transport);
             transport.listen();
-            Snmp snmp = new Snmp(transport);
 
             ResponseEvent<Address> response = snmp.get(pdu, target);
-            String result = "Err";
 
             if (response != null && response.getResponse() != null) {
-                // Pobieramy samą wartość (bez OID)
-                result = response.getResponse().get(0).getVariable().toString();
-            }
+                Variable var = response.getResponse().get(0).getVariable();
 
-            snmp.close();
-            return result;
+                // POPRAWKA: Użycie SMIConstants zamiast SnmpConstants
+                int syntax = var.getSyntax();
+                if (syntax == SMIConstants.EXCEPTION_NO_SUCH_OBJECT ||
+                        syntax == SMIConstants.EXCEPTION_NO_SUCH_INSTANCE) {
+                    return "Błędny OID";
+                }
+                return var.toString();
+            }
+            return "Err: Timeout";
         } catch (Exception e) {
             return "Err: " + e.getMessage();
+        } finally {
+            if (snmp != null) {
+                try { snmp.close(); } catch (Exception e) { }
+            }
         }
     }
 }

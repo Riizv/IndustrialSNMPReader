@@ -10,7 +10,7 @@ import java.io.IOException;
 public class IndustrialSNMPApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {
-        FXMLLoader fxmlLoader = new FXMLLoader(IndustrialSNMPApplication.class.getResource("INS-view.fxml"));
+        FXMLLoader fxmlLoader = new FXMLLoader(IndustrialSNMPApplication.class.getResource("login-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 800, 600);
         stage.setTitle("Industrial SNMP Reader");
         stage.setScene(scene);
