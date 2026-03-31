@@ -17,17 +17,20 @@
                 <TableView fx:id="deviceTable" VBox.vgrow="ALWAYS">
                     <columns>
                         <TableColumn fx:id="colId" text="ID" prefWidth="40" />
-                        <TableColumn fx:id="colIp" text="IP" prefWidth="120" />
-                        <TableColumn fx:id="colOid" text="OID" prefWidth="180" />
-                        <TableColumn fx:id="colTemp" text="Temp." prefWidth="80" />
-                        <TableColumn fx:id="colUpdate" text="Odczyt" prefWidth="120" />
+                        <TableColumn fx:id="colIp" text="IP" prefWidth="100" />
+                        <TableColumn fx:id="colHostname" text="Hostname" prefWidth="120" />
+                        <TableColumn fx:id="colVendor" text="Vendor" prefWidth="90" />
+                        <TableColumn fx:id="colTemp" text="Temp." prefWidth="70" />
+                        <TableColumn fx:id="colUptime" text="Uptime" prefWidth="120" />
+                        <TableColumn fx:id="colCpu" text="CPU %" prefWidth="70" />
+                        <TableColumn fx:id="colUpdate" text="Odczyt" prefWidth="100" />
                     </columns>
                 </TableView>
             </VBox>
             <VBox spacing="15" style="-fx-padding: 20;">
                 <Label text="Dodaj Urządzenie" style="-fx-font-weight: bold;" />
                 <TextField fx:id="ipField" promptText="Adres IP" />
-                <TextField fx:id="oidField" promptText="OID" />
+                <ChoiceBox fx:id="vendorChoiceBox" maxWidth="Infinity" />
                 <Button text="Dodaj" onAction="#onAddDevice" maxWidth="Infinity" />
                 <Button text="Usuń" onAction="#onDeleteDevice" maxWidth="Infinity" />
                 <Label fx:id="statusLabel" text="Gotowy" />

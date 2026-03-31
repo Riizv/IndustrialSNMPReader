@@ -3,6 +3,7 @@ module com.example.industrialsnmpreader {
     requires javafx.fxml;
     requires javafx.web;
     requires org.snmp4j;
+    requires java.sql;
 
     requires org.controlsfx.controls;
     requires org.kordamp.ikonli.javafx;
