@@ -16,6 +16,17 @@
         </configuration>
       </plugin>
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+        <configuration>
+          <mainClass>com.example.industrialsnmpreader.Launcher</mainClass>
+          <arguments>
+            <argument>--enable-native-access=org.xerial.sqlitejdbc</argument>
+          </arguments>
+        </configuration>
+      </plugin>
+      <plugin>
         <groupId>org.openjfx</groupId>
         <artifactId>javafx-maven-plugin</artifactId>
         <version>0.0.8</version>
@@ -24,6 +35,9 @@
             <id>default-cli</id>
             <configuration>
               <mainClass>com.example.industrialsnmpreader/com.example.industrialsnmpreader.Launcher</mainClass>
+              <options>
+                <option>--enable-native-access=org.xerial.sqlitejdbc</option>
+              </options>
               <launcher>app</launcher>
               <jlinkZipName>app</jlinkZipName>
               <jlinkImageName>app</jlinkImageName>
