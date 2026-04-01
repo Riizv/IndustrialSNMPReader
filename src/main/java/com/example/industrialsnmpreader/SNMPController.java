@@ -2,7 +2,9 @@ package com.example.industrialsnmpreader;
 
 import org.snmp4j.*;
 import org.snmp4j.event.ResponseEvent;
+import org.snmp4j.mp.MPv3;
 import org.snmp4j.mp.SnmpConstants;
+import org.snmp4j.security.*;
 import org.snmp4j.smi.*;
 import org.snmp4j.transport.DefaultUdpTransportMapping;
 
@@ -44,27 +46,61 @@ public class SNMPController {
         };
     }
 
-    public static String getSnmpValue(String ipAddress, String community, String oidString) {
+    public static String getSnmpValue(Device device, String oidString) {
         if (oidString == null || oidString.isEmpty()) return "Brak OID";
         
         Snmp snmp = null;
         try {
-            Address targetAddress = GenericAddress.parse("udp:" + ipAddress + "/161");
-            CommunityTarget<Address> target = new CommunityTarget<>();
-            target.setCommunity(new OctetString(community));
-            target.setAddress(targetAddress);
-            target.setRetries(2);
-            target.setTimeout(1500);
-            target.setVersion(SnmpConstants.version2c);
+            TransportMapping<? extends Address> transport = new DefaultUdpTransportMapping();
+            snmp = new Snmp(transport);
 
-            PDU pdu = new PDU();
+            Target<Address> target;
+            PDU pdu;
+
+            if (device.getSnmpVersion() == 3) {
+                // Konfiguracja SNMP v3
+                byte[] localEngineID = MPv3.createLocalEngineID();
+                USM usm = new USM(SecurityProtocols.getInstance(), new OctetString(localEngineID), 0);
+                SecurityModels.getInstance().addSecurityModel(usm);
+                
+                OID authProtocol = getAuthProtocol(device.getAuthProtocol());
+                OID privProtocol = getPrivProtocol(device.getPrivProtocol());
+                
+                UsmUser user = new UsmUser(
+                        new OctetString(device.getSecurityName()),
+                        authProtocol, new OctetString(device.getAuthPassphrase()),
+                        privProtocol, new OctetString(device.getPrivPassphrase())
+                );
+                
+                snmp.getUSM().addUser(new OctetString(device.getSecurityName()), user);
+
+                UserTarget<Address> utarget = new UserTarget<>();
+                utarget.setSecurityLevel(getSecurityLevel(device));
+                utarget.setSecurityName(new OctetString(device.getSecurityName()));
+                target = utarget;
+                
+                ScopedPDU scopedPdu = new ScopedPDU();
+                pdu = scopedPdu;
+            } else {
+                // Konfiguracja SNMP v1 / v2c
+                CommunityTarget<Address> ctarget = new CommunityTarget<>();
+                ctarget.setCommunity(new OctetString(device.getCommunity()));
+                target = ctarget;
+                
+                pdu = new PDU();
+            }
+
+            Address targetAddress = GenericAddress.parse("udp:" + device.getIpAddress() + "/161");
+            target.setAddress(targetAddress);
+            target.setRetries(1);
+            target.setTimeout(2000);
+            target.setVersion(device.getSnmpVersion() == 3 ? SnmpConstants.version3 : 
+                             (device.getSnmpVersion() == 0 ? SnmpConstants.version1 : SnmpConstants.version2c));
+
             pdu.add(new VariableBinding(new OID(oidString)));
             pdu.setType(PDU.GET);
 
-            TransportMapping<? extends Address> transport = new DefaultUdpTransportMapping();
-            snmp = new Snmp(transport);
             transport.listen();
-
             ResponseEvent<Address> response = snmp.get(pdu, target);
 
             if (response != null && response.getResponse() != null) {
@@ -74,10 +110,6 @@ public class SNMPController {
                 if (syntax == SMIConstants.EXCEPTION_NO_SUCH_OBJECT ||
                         syntax == SMIConstants.EXCEPTION_NO_SUCH_INSTANCE) {
                     return "Błędny OID";
-                }
-                
-                if (var instanceof TimeTicks) {
-                    return ((TimeTicks) var).toString();
                 }
                 
                 return var.toString();
@@ -90,5 +122,34 @@ public class SNMPController {
                 try { snmp.close(); } catch (Exception e) { }
             }
         }
+    }
+
+    private static int getSecurityLevel(Device d) {
+        boolean hasAuth = d.getAuthProtocol() != null && !d.getAuthProtocol().equals("NONE");
+        boolean hasPriv = d.getPrivProtocol() != null && !d.getPrivProtocol().equals("NONE");
+        
+        if (hasAuth && hasPriv) return SecurityLevel.AUTH_PRIV;
+        if (hasAuth) return SecurityLevel.AUTH_NOPRIV;
+        return SecurityLevel.NOAUTH_NOPRIV;
+    }
+
+    private static OID getAuthProtocol(String protocol) {
+        if (protocol == null) return null;
+        return switch (protocol.toUpperCase()) {
+            case "MD5" -> AuthMD5.ID;
+            case "SHA" -> AuthSHA.ID;
+            default -> null;
+        };
+    }
+
+    private static OID getPrivProtocol(String protocol) {
+        if (protocol == null) return null;
+        return switch (protocol.toUpperCase()) {
+            case "DES" -> PrivDES.ID;
+            case "AES", "AES128" -> PrivAES128.ID;
+            case "AES192" -> PrivAES192.ID;
+            case "AES256" -> PrivAES256.ID;
+            default -> null;
+        };
     }
 }

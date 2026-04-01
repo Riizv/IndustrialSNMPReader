@@ -11,6 +11,7 @@ public class DatabaseManager {
     static {
         initializeDatabasePath();
         createTableIfNotExist();
+        upgradeTableIfNeeded();
     }
 
     private static void initializeDatabasePath() {
@@ -19,10 +20,8 @@ public class DatabaseManager {
         String path;
 
         if (os.contains("win")) {
-            // Próba użycia Program Files (wymaga uprawnień administratora przy tworzeniu folderu)
             path = "C:\\Program Files\\" + appName + "\\";
         } else if (os.contains("nix") || os.contains("nux") || os.contains("mac")) {
-            // Próba użycia /opt/
             path = "/opt/" + appName + ".d/";
         } else {
             path = System.getProperty("user.home") + File.separator + appName + File.separator;
@@ -30,12 +29,9 @@ public class DatabaseManager {
 
         File directory = new File(path);
         
-        // Sprawdzenie uprawnień do zapisu. Jeśli nie mamy dostępu do /opt/ lub Program Files, 
-        // spadamy bezpiecznie do katalogu domowego użytkownika (AppData lub ~/.config).
         if (!directory.exists()) {
             boolean created = directory.mkdirs();
             if (!created) {
-                // Brak uprawnień do systemowych ścieżek - używamy ścieżki użytkownika
                 if (os.contains("win")) {
                     path = System.getenv("APPDATA") + File.separator + appName + File.separator;
                 } else if (os.contains("mac")) {
@@ -46,14 +42,12 @@ public class DatabaseManager {
                 new File(path).mkdirs();
             }
         } else if (!directory.canWrite()) {
-            // Jeśli folder istnieje, ale nie możemy w nim pisać (np. zainstalowany przez instalator, ale apka działa bez sudo)
             path = System.getProperty("user.home") + File.separator + "." + appName + File.separator;
             new File(path).mkdirs();
         }
 
         String dbPath = path + "devices.db";
         dbUrl = "jdbc:sqlite:" + dbPath;
-        System.out.println("Baza danych znajduje się pod adresem: " + dbPath);
     }
 
     private static void createTableIfNotExist() {
@@ -62,10 +56,43 @@ public class DatabaseManager {
                 String createTable = "CREATE TABLE IF NOT EXISTS devices (" +
                         "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                         "ip TEXT NOT NULL, " +
-                        "vendor TEXT NOT NULL" +
+                        "vendor TEXT NOT NULL, " +
+                        "snmp_version INTEGER DEFAULT 1, " +
+                        "community TEXT DEFAULT 'public', " +
+                        "security_name TEXT DEFAULT '', " +
+                        "auth_protocol TEXT DEFAULT 'NONE', " +
+                        "auth_passphrase TEXT DEFAULT '', " +
+                        "priv_protocol TEXT DEFAULT 'NONE', " +
+                        "priv_passphrase TEXT DEFAULT ''" +
                         ");";
                 Statement stmt = conn.createStatement();
                 stmt.execute(createTable);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void upgradeTableIfNeeded() {
+        String[] columns = {
+            "snmp_version INTEGER DEFAULT 1",
+            "community TEXT DEFAULT 'public'",
+            "security_name TEXT DEFAULT ''",
+            "auth_protocol TEXT DEFAULT 'NONE'",
+            "auth_passphrase TEXT DEFAULT ''",
+            "priv_protocol TEXT DEFAULT 'NONE'",
+            "priv_passphrase TEXT DEFAULT ''"
+        };
+        
+        try (Connection conn = DriverManager.getConnection(dbUrl)) {
+            for (String col : columns) {
+                String colName = col.split(" ")[0];
+                try {
+                    Statement stmt = conn.createStatement();
+                    stmt.execute("ALTER TABLE devices ADD COLUMN " + col);
+                } catch (SQLException e) {
+                    // Ignorujemy błąd jeśli kolumna już istnieje
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -78,16 +105,26 @@ public class DatabaseManager {
 
     public static List<Device> getAllDevices() {
         List<Device> devices = new ArrayList<>();
-        String sql = "SELECT id, ip, vendor FROM devices";
+        String sql = "SELECT * FROM devices";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                devices.add(new Device(
+                Device d = new Device(
                         rs.getInt("id"),
                         rs.getString("ip"),
                         rs.getString("vendor")
-                ));
+                );
+                d.setSnmpSettings(
+                    rs.getInt("snmp_version"),
+                    rs.getString("community"),
+                    rs.getString("security_name"),
+                    rs.getString("auth_protocol"),
+                    rs.getString("auth_passphrase"),
+                    rs.getString("priv_protocol"),
+                    rs.getString("priv_passphrase")
+                );
+                devices.add(d);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -110,6 +147,24 @@ public class DatabaseManager {
             e.printStackTrace();
         }
         return -1;
+    }
+
+    public static void updateDeviceSnmpSettings(Device d) {
+        String sql = "UPDATE devices SET snmp_version=?, community=?, security_name=?, auth_protocol=?, auth_passphrase=?, priv_protocol=?, priv_passphrase=? WHERE id=?";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, d.getSnmpVersion());
+            pstmt.setString(2, d.getCommunity());
+            pstmt.setString(3, d.getSecurityName());
+            pstmt.setString(4, d.getAuthProtocol());
+            pstmt.setString(5, d.getAuthPassphrase());
+            pstmt.setString(6, d.getPrivProtocol());
+            pstmt.setString(7, d.getPrivPassphrase());
+            pstmt.setInt(8, d.getId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void deleteDevice(int id) {

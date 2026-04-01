@@ -40,6 +40,7 @@
                 <ComboBox fx:id="vendorChoiceBox" maxWidth="Infinity"/>
                 <Button text="Dodaj" onAction="#onAddDevice" maxWidth="Infinity" styleClass="button-add"/>
                 <Button text="Wykres" onAction="#onShowChart" maxWidth="Infinity" styleClass="button-logout"/>
+                <Button text="Ustawienia SNMP" onAction="#onEditSnmpSettings" maxWidth="Infinity" styleClass="button-logout"/>
                 <Button text="Usuń" onAction="#onDeleteDevice" maxWidth="Infinity" styleClass="button-delete"/>
                 <Label fx:id="statusLabel" text="Gotowy"/>
             </VBox>

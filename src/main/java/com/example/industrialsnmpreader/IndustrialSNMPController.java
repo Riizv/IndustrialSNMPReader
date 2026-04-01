@@ -6,6 +6,8 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
+import javafx.geometry.Insets;
 import javafx.stage.Stage;
 import javafx.concurrent.Task;
 import javafx.animation.KeyFrame;
@@ -75,10 +77,10 @@ public class IndustrialSNMPController {
 
         Task<Void> task = new Task<>() {
             @Override protected Void call() {
-                String hostname = SNMPController.getSnmpValue(device.getIpAddress(), "public", oids.hostnameOid);
-                String temp = SNMPController.getSnmpValue(device.getIpAddress(), "public", oids.tempOid);
-                String uptime = SNMPController.getSnmpValue(device.getIpAddress(), "public", oids.uptimeOid);
-                String cpu = SNMPController.getSnmpValue(device.getIpAddress(), "public", oids.cpuOid);
+                String hostname = SNMPController.getSnmpValue(device, oids.hostnameOid);
+                String temp = SNMPController.getSnmpValue(device, oids.tempOid);
+                String uptime = SNMPController.getSnmpValue(device, oids.uptimeOid);
+                String cpu = SNMPController.getSnmpValue(device, oids.cpuOid);
 
                 javafx.application.Platform.runLater(() -> {
                     // Procesowanie Hostname
@@ -110,6 +112,76 @@ public class IndustrialSNMPController {
             }
         };
         new Thread(task).start();
+    }
+
+    @FXML
+    protected void onEditSnmpSettings() {
+        Device selected = deviceTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            statusLabel.setText("Wybierz urządzenie z tabeli.");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Ustawienia SNMP - " + selected.getIpAddress());
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        ComboBox<String> versionBox = new ComboBox<>(FXCollections.observableArrayList("v1", "v2c", "v3"));
+        int currentVer = selected.getSnmpVersion();
+        versionBox.getSelectionModel().select(currentVer == 0 ? 0 : (currentVer == 3 ? 2 : 1));
+
+        TextField communityField = new TextField(selected.getCommunity());
+        TextField securityNameField = new TextField(selected.getSecurityName());
+        ComboBox<String> authProtBox = new ComboBox<>(FXCollections.observableArrayList("NONE", "MD5", "SHA"));
+        authProtBox.getSelectionModel().select(selected.getAuthProtocol());
+        PasswordField authPassField = new PasswordField();
+        authPassField.setText(selected.getAuthPassphrase());
+        ComboBox<String> privProtBox = new ComboBox<>(FXCollections.observableArrayList("NONE", "DES", "AES128", "AES192", "AES256"));
+        privProtBox.getSelectionModel().select(selected.getPrivProtocol());
+        PasswordField privPassField = new PasswordField();
+        privPassField.setText(selected.getPrivPassphrase());
+
+        grid.add(new Label("Wersja SNMP:"), 0, 0);
+        grid.add(versionBox, 1, 0);
+        grid.add(new Label("Community (v1/v2c):"), 0, 1);
+        grid.add(communityField, 1, 1);
+        grid.add(new Label("Security Name (v3):"), 0, 2);
+        grid.add(securityNameField, 1, 2);
+        grid.add(new Label("Auth Protocol (v3):"), 0, 3);
+        grid.add(authProtBox, 1, 3);
+        grid.add(new Label("Auth Passphrase (v3):"), 0, 4);
+        grid.add(authPassField, 1, 4);
+        grid.add(new Label("Priv Protocol (v3):"), 0, 5);
+        grid.add(privProtBox, 1, 5);
+        grid.add(new Label("Priv Passphrase (v3):"), 0, 6);
+        grid.add(privPassField, 1, 6);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                int version = versionBox.getSelectionModel().getSelectedIndex();
+                if (version == 2) version = 3; // v3 index is 2 in box, but value is 3
+
+                selected.setSnmpSettings(
+                    version,
+                    communityField.getText(),
+                    securityNameField.getText(),
+                    authProtBox.getValue(),
+                    authPassField.getText(),
+                    privProtBox.getValue(),
+                    privPassField.getText()
+                );
+                DatabaseManager.updateDeviceSnmpSettings(selected);
+                updateSingleDevice(selected);
+                statusLabel.setText("Ustawienia SNMP zaktualizowane.");
+            }
+        });
     }
 
     @FXML
