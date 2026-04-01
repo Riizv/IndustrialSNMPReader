@@ -35,6 +35,8 @@ public class Device {
     public int getId() { return id.get(); }
     public String getIpAddress() { return ipAddress.get(); }
     public String getVendor() { return vendor.get(); }
+    public String getCpuUsage() { return cpuUsage.get(); }
+    public String getTemperature() { return temperature.get(); }
 
     public void setHostname(String host) { this.hostname.set(host); }
     public void setTemperature(String temp) { this.temperature.set(temp); }

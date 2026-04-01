@@ -28,8 +28,10 @@ public class IndustrialSNMPController {
     @FXML private TableColumn<Device, String> colUpdate;
 
     @FXML private TextField ipField;
-    @FXML private ChoiceBox<String> vendorChoiceBox;
+    @FXML private ComboBox<String> vendorChoiceBox;
     @FXML private Label statusLabel;
+
+
 
     private final ObservableList<Device> deviceList = FXCollections.observableArrayList();
     private Timeline autoRefreshTimeline;
@@ -51,34 +53,16 @@ public class IndustrialSNMPController {
         loadDevicesFromDb();
         deviceTable.setItems(deviceList);
 
-        autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(60), e -> refreshAllDevices()));
+
+        autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(10), e -> refreshAllDevices()));
         autoRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
         autoRefreshTimeline.play();
-        
+
         refreshAllDevices();
     }
 
     private void loadDevicesFromDb() {
         deviceList.setAll(DatabaseManager.getAllDevices());
-    }
-
-    @FXML
-    protected void onAddDevice() {
-        String ip = ipField.getText();
-        String vendor = vendorChoiceBox.getValue();
-        
-        if (ip != null && !ip.isEmpty() && vendor != null) {
-            int id = DatabaseManager.addDevice(ip, vendor);
-            if (id != -1) {
-                Device newDev = new Device(id, ip, vendor);
-                deviceList.add(newDev);
-                updateSingleDevice(newDev);
-                ipField.clear();
-                statusLabel.setText("Dodano urządzenie (ID: " + id + ").");
-            } else {
-                statusLabel.setText("Błąd dodawania do bazy.");
-            }
-        }
     }
 
     private void refreshAllDevices() {
@@ -114,7 +98,9 @@ public class IndustrialSNMPController {
                     device.setUptime(uptime);
 
                     // Procesowanie CPU - Wartość bezpośrednia w %
-                    if (cpu != null && !cpu.contains("Err") && !cpu.equals("Brak OID") && !cpu.equals("Błędny OID")) {
+                    // Option without checking errors - if (Integer.parseInt(cpu) >= 0)
+                    if(cpu != null && !cpu.contains("Err") && !cpu.equals("Brak OID") && !cpu.equals("Błędny OID"))
+                    {
                         device.setCpuUsage(cpu + " %");
                     } else { device.setCpuUsage(cpu); }
 
@@ -127,12 +113,50 @@ public class IndustrialSNMPController {
     }
 
     @FXML
+    protected void onAddDevice() {
+        String ip = ipField.getText();
+        String vendor = vendorChoiceBox.getValue();
+
+        if (ip != null && !ip.isEmpty() && vendor != null) {
+            int id = DatabaseManager.addDevice(ip, vendor);
+            if (id != -1) {
+                Device newDev = new Device(id, ip, vendor);
+                deviceList.add(newDev);
+                updateSingleDevice(newDev);
+                ipField.clear();
+                statusLabel.setText("Dodano urządzenie (ID: " + id + ").");
+            } else {
+                statusLabel.setText("Błąd dodawania do bazy.");
+            }
+        }
+    }
+
+    @FXML
     protected void onDeleteDevice() {
         Device selected = deviceTable.getSelectionModel().getSelectedItem();
         if (selected != null) {
             DatabaseManager.deleteDevice(selected.getId());
             deviceList.remove(selected);
             statusLabel.setText("Usunięto urządzenie.");
+        }
+    }
+
+    @FXML
+    protected void onShowChart() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("chart-view.fxml"));
+            Stage stage = new Stage();
+            stage.setTitle("Globalny Monitor Wydajności");
+            stage.setScene(new Scene(loader.load()));
+
+            ChartController controller = loader.getController();
+            // Przekazujemy całą listę urządzeń
+            controller.setDevices(deviceList);
+
+            stage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+            statusLabel.setText("Błąd otwierania wykresu.");
         }
     }
 

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="10" style="-fx-padding: 15; -fx-background-color: white;"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.example.industrialsnmpreader.ChartController"
+      stylesheets="@style.css"
+      prefWidth="900.0" prefHeight="700.0">
+
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Label text="Monitorowanie wszystkich urządzeń" style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #24292f;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Zamknij" onAction="#onClose" styleClass="button-delete"/>
+    </HBox>
+
+    <TabPane VBox.vgrow="ALWAYS" tabClosingPolicy="UNAVAILABLE">
+        <Tab text="Obciążenie CPU (%)">
+            <LineChart fx:id="cpuChart" animated="false" createSymbols="true">
+                <xAxis><CategoryAxis label="Czas"/></xAxis>
+                <yAxis><NumberAxis label="CPU %" autoRanging="false" upperBound="100"/></yAxis>
+            </LineChart>
+        </Tab>
+        <Tab text="Temperatura (°C)">
+            <LineChart fx:id="tempChart" animated="false" createSymbols="true">
+                <xAxis><CategoryAxis label="Czas"/></xAxis>
+                <yAxis><NumberAxis label="Temp °C"/></yAxis>
+            </LineChart>
+        </Tab>
+    </TabPane>
+
+</VBox>

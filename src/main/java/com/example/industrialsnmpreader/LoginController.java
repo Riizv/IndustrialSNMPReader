@@ -31,7 +31,7 @@ public class LoginController {
 
         // Ładujemy Twój poprzedni widok CRUD
         FXMLLoader fxmlLoader = new FXMLLoader(IndustrialSNMPApplication.class.getResource("INS-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 800, 500);
+        Scene scene = new Scene(fxmlLoader.load(), 1024, 600);
 
         stage.setScene(scene);
         stage.centerOnScreen();
