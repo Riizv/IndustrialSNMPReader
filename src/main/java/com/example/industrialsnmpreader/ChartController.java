@@ -35,7 +35,7 @@ public class ChartController {
 
     private void addDeviceSeries(Device device) {
         XYChart.Series<String, Number> cpuSeries = new XYChart.Series<>();
-        cpuSeries.setName(device.getIpAddress() + " (" + device.getVendor() + ")");
+        cpuSeries.setName(device.getIpAddress() + " (" + device.getHostname() + ")");
         cpuSeriesMap.put(device, cpuSeries);
         Platform.runLater(() -> cpuChart.getData().add(cpuSeries));
 

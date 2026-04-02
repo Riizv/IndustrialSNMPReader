@@ -63,6 +63,7 @@ public class Device {
     public String getVendor() { return vendor.get(); }
     public String getCpuUsage() { return cpuUsage.get(); }
     public String getTemperature() { return temperature.get(); }
+    public String getHostname() {return hostname.get(); }
 
     public int getSnmpVersion() { return snmpVersion.get(); }
     public String getCommunity() { return community.get(); }
