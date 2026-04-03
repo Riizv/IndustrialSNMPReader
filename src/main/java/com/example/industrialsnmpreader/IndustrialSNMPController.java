@@ -122,66 +122,33 @@ public class IndustrialSNMPController {
             return;
         }
 
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Ustawienia SNMP - " + selected.getIpAddress());
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("snmp-settings-view.fxml"));
+            DialogPane dialogPane = new DialogPane();
+            dialogPane.setContent(loader.load());
+            dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+            dialogPane.getStylesheets().add(getClass().getResource("style.css").toExternalForm());
+            dialogPane.getStyleClass().add("root");
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(20, 150, 10, 10));
+            SNMPSettingsController controller = loader.getController();
+            controller.setDevice(selected);
 
-        ComboBox<String> versionBox = new ComboBox<>(FXCollections.observableArrayList("v1", "v2c", "v3"));
-        int currentVer = selected.getSnmpVersion();
-        versionBox.getSelectionModel().select(currentVer == 0 ? 0 : (currentVer == 3 ? 2 : 1));
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setTitle("Ustawienia SNMP - " + selected.getIpAddress());
+            dialog.setDialogPane(dialogPane);
 
-        TextField communityField = new TextField(selected.getCommunity());
-        TextField securityNameField = new TextField(selected.getSecurityName());
-        ComboBox<String> authProtBox = new ComboBox<>(FXCollections.observableArrayList("NONE", "MD5", "SHA"));
-        authProtBox.getSelectionModel().select(selected.getAuthProtocol());
-        PasswordField authPassField = new PasswordField();
-        authPassField.setText(selected.getAuthPassphrase());
-        ComboBox<String> privProtBox = new ComboBox<>(FXCollections.observableArrayList("NONE", "DES", "AES128", "AES192", "AES256"));
-        privProtBox.getSelectionModel().select(selected.getPrivProtocol());
-        PasswordField privPassField = new PasswordField();
-        privPassField.setText(selected.getPrivPassphrase());
-
-        grid.add(new Label("Wersja SNMP:"), 0, 0);
-        grid.add(versionBox, 1, 0);
-        grid.add(new Label("Community (v1/v2c):"), 0, 1);
-        grid.add(communityField, 1, 1);
-        grid.add(new Label("Security Name (v3):"), 0, 2);
-        grid.add(securityNameField, 1, 2);
-        grid.add(new Label("Auth Protocol (v3):"), 0, 3);
-        grid.add(authProtBox, 1, 3);
-        grid.add(new Label("Auth Passphrase (v3):"), 0, 4);
-        grid.add(authPassField, 1, 4);
-        grid.add(new Label("Priv Protocol (v3):"), 0, 5);
-        grid.add(privProtBox, 1, 5);
-        grid.add(new Label("Priv Passphrase (v3):"), 0, 6);
-        grid.add(privPassField, 1, 6);
-
-        dialog.getDialogPane().setContent(grid);
-
-        dialog.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                int version = versionBox.getSelectionModel().getSelectedIndex();
-                if (version == 2) version = 3; // v3 index is 2 in box, but value is 3
-
-                selected.setSnmpSettings(
-                    version,
-                    communityField.getText(),
-                    securityNameField.getText(),
-                    authProtBox.getValue(),
-                    authPassField.getText(),
-                    privProtBox.getValue(),
-                    privPassField.getText()
-                );
-                DatabaseManager.updateDeviceSnmpSettings(selected);
-                updateSingleDevice(selected);
-                statusLabel.setText("Ustawienia SNMP zaktualizowane.");
-            }
-        });
+            dialog.showAndWait().ifPresent(response -> {
+                if (response == ButtonType.OK) {
+                    controller.saveSettings();
+                    DatabaseManager.updateDeviceSnmpSettings(selected);
+                    updateSingleDevice(selected);
+                    statusLabel.setText("Ustawienia SNMP zaktualizowane.");
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+            statusLabel.setText("Błąd ładowania okna ustawień.");
+        }
     }
 
     @FXML

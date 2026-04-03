@@ -50,14 +50,6 @@ public class Device {
     public StringProperty cpuUsageProperty() { return cpuUsage; }
     public StringProperty lastUpdateProperty() { return lastUpdate; }
 
-    public IntegerProperty snmpVersionProperty() { return snmpVersion; }
-    public StringProperty communityProperty() { return community; }
-    public StringProperty securityNameProperty() { return securityName; }
-    public StringProperty authProtocolProperty() { return authProtocol; }
-    public StringProperty authPassphraseProperty() { return authPassphrase; }
-    public StringProperty privProtocolProperty() { return privProtocol; }
-    public StringProperty privPassphraseProperty() { return privPassphrase; }
-
     public int getId() { return id.get(); }
     public String getIpAddress() { return ipAddress.get(); }
     public String getVendor() { return vendor.get(); }

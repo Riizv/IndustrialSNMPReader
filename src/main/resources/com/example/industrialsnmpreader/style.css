@@ -223,6 +223,71 @@
     -fx-font-size: 11px;
 }
 
+/* === TAB PANE === */
+.tab-pane {
+    -fx-tab-min-width: 120;
+}
+
+.tab-pane .tab-header-area {
+    -fx-padding: 0 0 0 0;
+}
+
+.tab-pane .tab-header-background {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #d0d7de transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.tab {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
+    -fx-padding: 8 16;
+    -fx-cursor: hand;
+}
+
+.tab:hover {
+    -fx-background-color: #f3f4f6;
+}
+
+.tab .tab-container .tab-label {
+    -fx-text-fill: #57606a;
+    -fx-font-weight: normal;
+}
+
+.tab:selected {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #fd8c73 transparent;
+    -fx-border-width: 0 0 2 0;
+}
+
+.tab:selected .tab-label {
+    -fx-text-fill: #24292f;
+    -fx-font-weight: bold;
+}
+
+/* === DIALOG PANE === */
+.dialog-pane {
+    -fx-background-color: white;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #f6f8fa;
+    -fx-padding: 15;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #24292f;
+}
+
+.dialog-pane .button-bar {
+    -fx-padding: 10 20;
+    -fx-background-color: #f6f8fa;
+    -fx-border-color: #d0d7de transparent transparent transparent;
+}
+
 /* === SPLIT PANE (Resize Bar) === */
 .split-pane {
     -fx-background-color: transparent;

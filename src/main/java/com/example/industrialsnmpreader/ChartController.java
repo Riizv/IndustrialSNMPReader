@@ -40,7 +40,7 @@ public class ChartController {
         Platform.runLater(() -> cpuChart.getData().add(cpuSeries));
 
         XYChart.Series<String, Number> tempSeries = new XYChart.Series<>();
-        tempSeries.setName(device.getIpAddress() + " (" + device.getVendor() + ")");
+        tempSeries.setName(device.getIpAddress() + " (" + device.getHostname() + ")");
         tempSeriesMap.put(device, tempSeries);
         Platform.runLater(() -> tempChart.getData().add(tempSeries));
 

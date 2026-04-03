@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<GridPane hgap="15" vgap="15" stylesheets="@style.css" styleClass="root"
+          xmlns:fx="http://javafx.com/fxml"
+          fx:controller="com.example.industrialsnmpreader.SNMPSettingsController">
+    <padding>
+        <Insets top="25" right="25" bottom="25" left="25"/>
+    </padding>
+
+    <Label text="Wersja SNMP:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+    <ComboBox fx:id="versionBox" maxWidth="Infinity" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+    <Label text="Community (v1/v2c):" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+    <TextField fx:id="communityField" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+    <Label text="Security Name (v3):" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+    <TextField fx:id="securityNameField" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+
+    <Label text="Auth Protocol (v3):" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+    <ComboBox fx:id="authProtBox" maxWidth="Infinity" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+
+    <Label text="Auth Passphrase (v3):" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+    <PasswordField fx:id="authPassField" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+
+    <Label text="Priv Protocol (v3):" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+    <ComboBox fx:id="privProtBox" maxWidth="Infinity" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+
+    <Label text="Priv Passphrase (v3):" GridPane.columnIndex="0" GridPane.rowIndex="6"/>
+    <PasswordField fx:id="privPassField" GridPane.columnIndex="1" GridPane.rowIndex="6"/>
+    
+    <columnConstraints>
+        <ColumnConstraints minWidth="150" prefWidth="170"/>
+        <ColumnConstraints hgrow="ALWAYS" minWidth="200"/>
+    </columnConstraints>
+</GridPane>

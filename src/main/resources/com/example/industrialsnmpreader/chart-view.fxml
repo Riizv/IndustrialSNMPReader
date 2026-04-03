@@ -3,19 +3,19 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox spacing="10" style="-fx-padding: 15; -fx-background-color: white;"
+<VBox spacing="10" style="-fx-padding: 20; -fx-background-color: white;"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.example.industrialsnmpreader.ChartController"
       stylesheets="@style.css"
       prefWidth="900.0" prefHeight="700.0">
 
     <HBox alignment="CENTER_LEFT" spacing="15">
-        <Label text="Monitorowanie wszystkich urządzeń" style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #24292f;"/>
+        <Label text="Globalny Monitor Wydajności" style="-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: #24292f;"/>
         <Region HBox.hgrow="ALWAYS"/>
         <Button text="Zamknij" onAction="#onClose" styleClass="button-delete"/>
     </HBox>
 
-    <TabPane VBox.vgrow="ALWAYS" tabClosingPolicy="UNAVAILABLE">
+    <TabPane VBox.vgrow="ALWAYS" tabClosingPolicy="UNAVAILABLE" styleClass="tab-pane">
         <Tab text="Obciążenie CPU (%)">
             <LineChart fx:id="cpuChart" animated="false" createSymbols="true">
                 <xAxis><CategoryAxis label="Czas"/></xAxis>
