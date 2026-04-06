@@ -58,6 +58,15 @@ public class SNMPController {
                     commonUptime,
                     "1.3.6.1.2.1.25.3.3.1.2.2"
             );
+            // Hirschmann HMPRIV-MGMT-SNMP-MIB (enterprise 1.3.6.1.4.1.248)
+            // hmTemperature      : .14.2.15.1.0  — degrees Celsius, direct value
+            // hmCpuUtilization   : .14.2.14.1.0  — percent (0-100)
+            case "hirschmann" -> new VendorOids(
+                    commonHostname,
+                    "1.3.6.1.4.1.248.14.2.15.1.0",
+                    commonUptime,
+                    "1.3.6.1.4.1.248.14.2.14.1.0"
+            );
             default -> null;
         };
     }

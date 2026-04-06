@@ -8,7 +8,7 @@ A JavaFX desktop application for real-time monitoring of industrial network devi
 
 | Feature | Description |
 |---|---|
-| **Multi-vendor support** | Pre-configured OIDs for Siemens and MikroTik; extensible for other vendors |
+| **Multi-vendor support** | Pre-configured OIDs for Siemens, MikroTik, and Hirschmann; extensible for other vendors |
 | **SNMP v1 / v2c / v3** | Full SNMPv3 USM support (AuthPriv: MD5/SHA + DES/AES) |
 | **Real-time polling** | Auto-refresh every 10 seconds using a background thread pool |
 | **Historical charts** | Interactive line charts (CPU %, temperature) with per-device or aggregate view |
@@ -84,7 +84,7 @@ The project includes unit tests covering core logic (no JavaFX runtime required)
 - `checkCredentials` validates the seeded admin account, rejects wrong passwords, unknown users, and null inputs
 
 **`SNMPControllerTest`** — unit tests for OID resolution:
-- Correct OIDs returned for Siemens and MikroTik
+- Correct OIDs returned for Siemens, MikroTik, and Hirschmann
 - Lookup is case-insensitive
 - Unknown or null vendor returns `null`
 
@@ -126,6 +126,49 @@ The `devices.db` file is created automatically on first launch:
 | Windows | `%APPDATA%\IndustrialSNMPReader\` |
 
 > If the default path is not writable, the application falls back to the user home directory.
+
+---
+
+## Supported Vendors & OIDs
+
+Standard OIDs shared by all vendors:
+
+| Metric | OID |
+|---|---|
+| Hostname | `1.3.6.1.2.1.1.5.0` (sysName) |
+| Uptime | `1.3.6.1.2.1.1.3.0` (sysUpTime) |
+
+### Siemens
+MIB: Siemens private enterprise (`1.3.6.1.4.1.261`)
+
+| Metric | OID |
+|---|---|
+| Temperature | `1.3.6.1.4.1.261.2.1.1.1.1.0` |
+| CPU % | `1.3.6.1.4.1.261.2.1.1.3.1.0` |
+
+### MikroTik
+MIB: MikroTik private enterprise (`1.3.6.1.4.1.14988`)
+
+| Metric | OID | Note |
+|---|---|---|
+| Temperature | `1.3.6.1.4.1.14988.1.1.3.11.0` | Raw value is tenths of °C (divided by 10) |
+| CPU % | `1.3.6.1.2.1.25.3.3.1.2.2` | HOST-RESOURCES-MIB |
+
+### Hirschmann
+MIB: HMPRIV-MGMT-SNMP-MIB, Classic firmware only (`1.3.6.1.4.1.248.14.x`)
+
+| Metric | OID |
+|---|---|
+| Temperature | `1.3.6.1.4.1.248.14.2.15.1.0` |
+| CPU % | `1.3.6.1.4.1.248.14.2.14.1.0` |
+
+> **HiOS firmware (e.g. GRS1042 on HiOS 9.x):** The OIDs above apply to Classic firmware only.
+> HiOS uses a separate MIB set (`hm2DevMgmt`, subtree `.248.11.x`) with table-based temperature entries.
+> To find the correct OIDs for your firmware version, download the HiOS MIB package from Hirschmann's
+> website and walk the device tree:
+> ```bash
+> snmpwalk -v2c -c public <device-ip> 1.3.6.1.4.1.248.11
+> ```
 
 ---
 

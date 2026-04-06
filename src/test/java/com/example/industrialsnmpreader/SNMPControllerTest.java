@@ -34,6 +34,22 @@ class SNMPControllerTest {
     }
 
     @Test
+    void getOidsForVendor_hirschmann_returnsCorrectOids() {
+        SNMPController.VendorOids oids = SNMPController.getOidsForVendor("Hirschmann");
+        assertNotNull(oids);
+        assertEquals("1.3.6.1.2.1.1.5.0", oids.hostnameOid);
+        assertEquals("1.3.6.1.4.1.248.14.2.15.1.0", oids.tempOid);
+        assertEquals("1.3.6.1.2.1.1.3.0", oids.uptimeOid);
+        assertEquals("1.3.6.1.4.1.248.14.2.14.1.0", oids.cpuOid);
+    }
+
+    @Test
+    void getOidsForVendor_hirschmann_caseInsensitive() {
+        assertNotNull(SNMPController.getOidsForVendor("HIRSCHMANN"));
+        assertNotNull(SNMPController.getOidsForVendor("hirschmann"));
+    }
+
+    @Test
     void getOidsForVendor_unknownVendor_returnsNull() {
         assertNull(SNMPController.getOidsForVendor("cisco"));
         assertNull(SNMPController.getOidsForVendor("unknown"));

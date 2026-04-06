@@ -60,7 +60,7 @@ public class IndustrialSNMPController {
         colCpu.setCellValueFactory(d -> d.getValue().cpuUsageProperty());
         colUpdate.setCellValueFactory(d -> d.getValue().lastUpdateProperty());
 
-        vendorChoiceBox.setItems(FXCollections.observableArrayList("Siemens", "Mikrotik"));
+        vendorChoiceBox.setItems(FXCollections.observableArrayList("Siemens", "Mikrotik", "Hirschmann"));
         vendorChoiceBox.getSelectionModel().selectFirst();
 
         loadDevicesFromDb();
@@ -119,12 +119,18 @@ public class IndustrialSNMPController {
 
                     // Procesowanie temperatury - MikroTik (1.3.6.1.4.1.14988.1.1.3.10.0) wymaga / 10
                     if (temp != null && !temp.contains("Err") && !temp.equals("Brak OID") && !temp.equals("Błędny OID")) {
-                        if (device.getVendor().equalsIgnoreCase("Mikrotik")) {
-                            try {
-                                double t = Double.parseDouble(temp) / 10.0;
-                                device.setTemperature(t + " °C");
-                            } catch (Exception ex) { device.setTemperature(temp); }
-                        } else { device.setTemperature(temp + " °C"); }
+                        switch (device.getVendor().toLowerCase()) {
+                            case "mikrotik" -> {
+                                // MikroTik returns tenths of a degree
+                                try {
+                                    double t = Double.parseDouble(temp) / 10.0;
+                                    device.setTemperature(t + " °C");
+                                } catch (Exception ex) { device.setTemperature(temp); }
+                            }
+                            default ->
+                                // Siemens, Hirschmann — direct Celsius value
+                                device.setTemperature(temp + " °C");
+                        }
                     } else { device.setTemperature(temp); }
 
                     // Procesowanie Uptime
