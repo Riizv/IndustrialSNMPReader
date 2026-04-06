@@ -22,7 +22,7 @@
         <Label text="Hasło:"/>
         <PasswordField fx:id="passwordField" promptText="haslo123"/>
 
-        <Button text="Zaloguj" onAction="#onLoginClick" defaultButton="true"
+        <Button fx:id="loginButton" text="Zaloguj" onAction="#onLoginClick" defaultButton="true"
                 maxWidth="Infinity" styleClass="button-logout"/>
 
         <Label fx:id="errorLabel" textFill="#e74c3c" wrapText="true"/>

@@ -1,66 +1,136 @@
 # Industrial SNMP Reader
 
-A modern JavaFX application designed for monitoring industrial network devices (e.g., Siemens, MikroTik) using the SNMP protocol (v1, v2c, and v3). The application provides real-time monitoring of CPU usage, temperature, uptime, and hostname, with historical data visualization through interactive charts.
+A JavaFX desktop application for real-time monitoring of industrial network devices (Siemens, MikroTik) via SNMP v1/v2c/v3. Tracks CPU load, temperature, uptime, and hostname with historical chart visualization and persistent SQLite storage.
 
-## Use Cases
+---
 
-- **Industrial Monitoring**: Real-time tracking of hardware health (CPU/Temp) for network infrastructure.
-- **Multi-Vendor Support**: Pre-configured OIDs for Siemens and MikroTik devices, with an extensible architecture for other vendors.
-- **Secure SNMP v3 Management**: Support for modern security standards (USM) including AuthPriv (MD5/SHA, DES/AES).
-- **Performance Analysis**: Interactive line charts to analyze trends in CPU and temperature over time.
-- **Local Database**: Persistent storage of device configurations using SQLite, ensuring settings are preserved across sessions.
+## Features
+
+| Feature | Description |
+|---|---|
+| **Multi-vendor support** | Pre-configured OIDs for Siemens and MikroTik; extensible for other vendors |
+| **SNMP v1 / v2c / v3** | Full SNMPv3 USM support (AuthPriv: MD5/SHA + DES/AES) |
+| **Real-time polling** | Auto-refresh every 10 seconds using a background thread pool |
+| **Historical charts** | Interactive line charts (CPU %, temperature) with per-device or aggregate view |
+| **Persistent storage** | SQLite database stored in the OS-appropriate app directory |
+| **User authentication** | Login screen with salted SHA-256 password hashing |
+
+---
 
 ## Prerequisites
 
-- **Java Development Kit (JDK) 21 or newer** (Project target is Java 25, but 21+ is required for JavaFX compatibility).
-- **Maven 3.8+** (or use the provided `./mvnw` wrapper).
+- **JDK 21+** (project targets Java 25; JavaFX requires 21+)
+- **Maven 3.8+** (or use the included `./mvnw` wrapper)
 
-## Build Instructions
+---
 
-To compile the project and download dependencies:
+## Build & Run
 
 ```bash
+# Compile
 ./mvnw clean compile
-```
 
-To run the application directly from the source code:
-
-```bash
+# Run from source
 ./mvnw javafx:run
-```
 
-## Packaging
+# Run tests
+./mvnw test
 
-The project is configured with `maven-shade-plugin` to create an executable "Fat JAR" containing all dependencies.
-
-### Create Executable JAR
-
-Run the following command:
-
-```bash
+# Package fat JAR
 ./mvnw clean package
 ```
 
-The resulting JAR will be located in the `target/` directory:
-`target/IndustrialSNMPReader-1.0-SNAPSHOT.jar`
-
-### Running the JAR
-
-You can run the application using the standard `java -jar` command. Note that for SQLite support on some systems, you may need to enable native access:
+The packaged JAR is output to `target/IndustrialSNMPReader-1.0-SNAPSHOT.jar`.
 
 ```bash
-java --enable-native-access=org.xerial.sqlitejdbc -jar target/IndustrialSNMPReader-1.0-SNAPSHOT.jar
+java --enable-native-access=org.xerial.sqlitejdbc \
+     -jar target/IndustrialSNMPReader-1.0-SNAPSHOT.jar
 ```
 
-## Architecture & Tech Stack
+> The `--enable-native-access` flag is required for SQLite JDBC on some systems.
 
-- **JavaFX 21**: Modern UI framework with CSS styling.
-- **SNMP4J**: Enterprise-grade SNMP library.
-- **SQLite JDBC**: Lightweight, file-based database.
-- **Maven**: Dependency management and build automation.
-- **GitHub Style CSS**: Custom stylesheet for a clean, professional look.
+---
 
-## Configuration
+## Keyboard Shortcuts
 
-- **Database**: The application automatically creates a `devices.db` file in the application directory or user home folder, depending on OS permissions.
-- **SNMP Settings**: Accessible via the "Ustawienia SNMP" button for each device to configure versions (v1/v2c/v3) and security credentials.
+All shortcuts use **⌘ Cmd** on macOS and **Ctrl** on Windows/Linux.
+
+| Shortcut | Action |
+|---|---|
+| `⌘ R` | Refresh all devices |
+| `⌘ N` | Add device |
+| `⌘ ,` | Open / close SNMP settings for selected device |
+| `⌘ G` | Toggle performance chart window |
+| `⌘ ⌫` | Delete selected device |
+| `⌘ O` | Log out |
+
+---
+
+## Testing
+
+The project includes unit tests covering core logic (no JavaFX runtime required).
+
+```bash
+./mvnw test
+```
+
+### Test coverage
+
+**`DatabaseManagerTest`** — integration tests against an in-memory temporary SQLite database:
+- `addDevice` returns a valid generated ID
+- `getAllDevices` returns previously inserted records
+- `updateDeviceSnmpSettings` persists all SNMPv3 fields (version, security name, auth/priv protocols and passphrases)
+- `deleteDevice` removes the record from the database
+- `checkCredentials` validates the seeded admin account, rejects wrong passwords, unknown users, and null inputs
+
+**`SNMPControllerTest`** — unit tests for OID resolution:
+- Correct OIDs returned for Siemens and MikroTik
+- Lookup is case-insensitive
+- Unknown or null vendor returns `null`
+
+---
+
+## Architecture
+
+```
+IndustrialSNMPApplication   → JavaFX entry point
+LoginController             → Authentication, async DB check
+IndustrialSNMPController    → Main view: device table, polling, navigation
+SNMPController              → SNMP4J polling logic, vendor OID registry
+DatabaseManager             → SQLite CRUD (devices + users)
+ChartController             → LineChart with per-device filter and tooltips
+SNMPSettingsController      → Dialog for per-device SNMPv3 configuration
+Device                      → Data model with JavaFX properties + history ring buffer
+```
+
+### Tech Stack
+
+| Layer | Library |
+|---|---|
+| UI | JavaFX 21 |
+| SNMP | SNMP4J |
+| Database | SQLite JDBC (org.xerial) |
+| Testing | JUnit 5 |
+| Build | Maven + maven-shade-plugin |
+
+---
+
+## Database Location
+
+The `devices.db` file is created automatically on first launch:
+
+| OS | Path |
+|---|---|
+| macOS | `~/Library/Application Support/IndustrialSNMPReader/` |
+| Linux | `~/.config/IndustrialSNMPReader/` |
+| Windows | `%APPDATA%\IndustrialSNMPReader\` |
+
+> If the default path is not writable, the application falls back to the user home directory.
+
+---
+
+## Default Credentials
+
+| Username | Password |
+|---|---|
+| `admin` | `admin123` |

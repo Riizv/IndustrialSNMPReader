@@ -16,6 +16,9 @@ import javafx.util.Duration;
 import java.io.IOException;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 
 public class IndustrialSNMPController {
 
@@ -35,8 +38,16 @@ public class IndustrialSNMPController {
 
 
 
+    private static final Pattern IP_PATTERN = Pattern.compile(
+            "^((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$");
+
     private final ObservableList<Device> deviceList = FXCollections.observableArrayList();
     private Timeline autoRefreshTimeline;
+    private final ExecutorService pollExecutor = Executors.newFixedThreadPool(10, r -> {
+        Thread t = new Thread(r);
+        t.setDaemon(true);
+        return t;
+    });
 
     @FXML
     public void initialize() {
@@ -60,11 +71,31 @@ public class IndustrialSNMPController {
         autoRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
         autoRefreshTimeline.play();
 
+        deviceTable.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                newScene.windowProperty().addListener((obs2, oldWindow, newWindow) -> {
+                    if (newWindow != null) {
+                        newWindow.setOnCloseRequest(e -> shutdown());
+                    }
+                });
+            }
+        });
+
         refreshAllDevices();
+    }
+
+    private void shutdown() {
+        if (autoRefreshTimeline != null) autoRefreshTimeline.stop();
+        pollExecutor.shutdownNow();
     }
 
     private void loadDevicesFromDb() {
         deviceList.setAll(DatabaseManager.getAllDevices());
+    }
+
+    @FXML
+    protected void onRefresh() {
+        refreshAllDevices();
     }
 
     private void refreshAllDevices() {
@@ -107,11 +138,16 @@ public class IndustrialSNMPController {
                     } else { device.setCpuUsage(cpu); }
 
                     device.setLastUpdate(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+                    device.addHistoryPoint(
+                        device.lastUpdateProperty().get(),
+                        Device.parseMetricValue(device.getCpuUsage()),
+                        Device.parseMetricValue(device.getTemperature())
+                    );
                 });
                 return null;
             }
         };
-        new Thread(task).start();
+        pollExecutor.submit(task);
     }
 
     @FXML
@@ -137,6 +173,12 @@ public class IndustrialSNMPController {
             dialog.setTitle("Ustawienia SNMP - " + selected.getIpAddress());
             dialog.setDialogPane(dialogPane);
 
+            dialogPane.setOnKeyPressed(e -> {
+                if (e.getCode() == javafx.scene.input.KeyCode.COMMA && e.isShortcutDown()) {
+                    dialog.close();
+                }
+            });
+
             dialog.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.OK) {
                     controller.saveSettings();
@@ -157,6 +199,10 @@ public class IndustrialSNMPController {
         String vendor = vendorChoiceBox.getValue();
 
         if (ip != null && !ip.isEmpty() && vendor != null) {
+            if (!IP_PATTERN.matcher(ip).matches()) {
+                statusLabel.setText("Nieprawidłowy adres IP.");
+                return;
+            }
             int id = DatabaseManager.addDevice(ip, vendor);
             if (id != -1) {
                 Device newDev = new Device(id, ip, vendor);
@@ -180,19 +226,32 @@ public class IndustrialSNMPController {
         }
     }
 
+    private Stage chartStage;
+
     @FXML
     protected void onShowChart() {
+        if (chartStage != null && chartStage.isShowing()) {
+            chartStage.close();
+            chartStage = null;
+            return;
+        }
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("chart-view.fxml"));
-            Stage stage = new Stage();
-            stage.setTitle("Globalny Monitor Wydajności");
-            stage.setScene(new Scene(loader.load()));
+            chartStage = new Stage();
+            chartStage.setTitle("Globalny Monitor Wydajności");
+            chartStage.setScene(new Scene(loader.load()));
 
             ChartController controller = loader.getController();
-            // Przekazujemy całą listę urządzeń
             controller.setDevices(deviceList);
 
-            stage.show();
+            chartStage.setOnCloseRequest(e -> chartStage = null);
+            chartStage.getScene().setOnKeyPressed(e -> {
+                if (e.getCode() == javafx.scene.input.KeyCode.G && e.isShortcutDown()) {
+                    chartStage.close();
+                    chartStage = null;
+                }
+            });
+            chartStage.show();
         } catch (IOException e) {
             e.printStackTrace();
             statusLabel.setText("Błąd otwierania wykresu.");
@@ -202,6 +261,7 @@ public class IndustrialSNMPController {
     @FXML
     protected void onLogoutClick() throws IOException {
         if (autoRefreshTimeline != null) autoRefreshTimeline.stop();
+        pollExecutor.shutdownNow();
         Stage stage = (Stage) deviceTable.getScene().getWindow();
         FXMLLoader loader = new FXMLLoader(getClass().getResource("login-view.fxml"));
         stage.setScene(new Scene(loader.load(), 600, 400));

@@ -6,55 +6,105 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Tooltip;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ChartController {
 
     @FXML private LineChart<String, Number> cpuChart;
     @FXML private LineChart<String, Number> tempChart;
+    @FXML private ComboBox<Device> deviceFilter;
 
     private final Map<Device, XYChart.Series<String, Number>> cpuSeriesMap = new HashMap<>();
     private final Map<Device, XYChart.Series<String, Number>> tempSeriesMap = new HashMap<>();
     private final Map<Device, String> lastProcessedTimes = new HashMap<>();
 
     public void setDevices(ObservableList<Device> devices) {
-        // Dodaj początkowe urządzenia
+        deviceFilter.setConverter(new StringConverter<>() {
+            @Override public String toString(Device d) {
+                if (d == null) return "Wszystkie urządzenia";
+                String host = d.getHostname();
+                return d.getIpAddress() + (host != null && !host.equals("-") ? " (" + host + ")" : "");
+            }
+            @Override public Device fromString(String s) { return null; }
+        });
+        deviceFilter.getItems().add(null);
+        devices.forEach(d -> deviceFilter.getItems().add(d));
+        deviceFilter.getSelectionModel().selectFirst();
+        deviceFilter.setOnAction(e -> applyFilter());
+
         devices.forEach(this::addDeviceSeries);
 
-        // Nasłuchuj zmian w liście urządzeń (dodawanie/usuwanie)
         devices.addListener((ListChangeListener<Device>) c -> {
             while (c.next()) {
-                if (c.wasAdded()) c.getAddedSubList().forEach(this::addDeviceSeries);
-                if (c.wasRemoved()) c.getRemoved().forEach(this::removeDeviceSeries);
+                if (c.wasAdded()) c.getAddedSubList().forEach(d -> {
+                    deviceFilter.getItems().add(d);
+                    addDeviceSeries(d);
+                });
+                if (c.wasRemoved()) c.getRemoved().forEach(d -> {
+                    deviceFilter.getItems().remove(d);
+                    removeDeviceSeries(d);
+                });
             }
         });
+    }
+
+    private void applyFilter() {
+        Device selected = deviceFilter.getValue();
+        cpuSeriesMap.forEach((device, series) -> setSeriesVisible(series, selected == null || device == selected));
+        tempSeriesMap.forEach((device, series) -> setSeriesVisible(series, selected == null || device == selected));
+    }
+
+    private void setSeriesVisible(XYChart.Series<String, Number> series, boolean visible) {
+        if (series.getNode() != null) series.getNode().setVisible(visible);
+        series.getData().forEach(d -> { if (d.getNode() != null) d.getNode().setVisible(visible); });
     }
 
     private void addDeviceSeries(Device device) {
         XYChart.Series<String, Number> cpuSeries = new XYChart.Series<>();
         cpuSeries.setName(device.getIpAddress() + " (" + device.getHostname() + ")");
         cpuSeriesMap.put(device, cpuSeries);
-        Platform.runLater(() -> cpuChart.getData().add(cpuSeries));
 
         XYChart.Series<String, Number> tempSeries = new XYChart.Series<>();
         tempSeries.setName(device.getIpAddress() + " (" + device.getHostname() + ")");
         tempSeriesMap.put(device, tempSeries);
-        Platform.runLater(() -> tempChart.getData().add(tempSeries));
 
-        // Nasłuchuj zmian danych dla tego urządzenia
+        // Wypełnij serię istniejącą historią zebraną przed otwarciem wykresu
+        List<Device.DataPoint> history = device.getHistory();
+        List<XYChart.Data<String, Number>> cpuHistData = new ArrayList<>();
+        List<XYChart.Data<String, Number>> tempHistData = new ArrayList<>();
+        for (Device.DataPoint p : history) {
+            XYChart.Data<String, Number> cpuD = new XYChart.Data<>(p.time(), p.cpu());
+            XYChart.Data<String, Number> tempD = new XYChart.Data<>(p.time(), p.temperature());
+            cpuSeries.getData().add(cpuD);
+            tempSeries.getData().add(tempD);
+            cpuHistData.add(cpuD);
+            tempHistData.add(tempD);
+        }
+        if (!history.isEmpty()) {
+            lastProcessedTimes.put(device, history.get(history.size() - 1).time());
+        }
+
+        Platform.runLater(() -> {
+            cpuChart.getData().add(cpuSeries);
+            tempChart.getData().add(tempSeries);
+            // Tooltips dla historycznych punktów — dodajemy po dodaniu serii do wykresu
+            cpuHistData.forEach(d -> addTooltip(d, d.getYValue().doubleValue(), "%"));
+            tempHistData.forEach(d -> addTooltip(d, d.getYValue().doubleValue(), "°C"));
+        });
+
+        // Nasłuchuj nowych punktów
         device.lastUpdateProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null && !newVal.equals("-") && !newVal.equals(lastProcessedTimes.get(device))) {
                 updateDeviceData(device, newVal);
             }
         });
-
-        // Jeśli są już dane, dodaj je od razu
-        if (!device.lastUpdateProperty().get().equals("-")) {
-            updateDeviceData(device, device.lastUpdateProperty().get());
-        }
     }
 
     private void removeDeviceSeries(Device device) {
@@ -76,11 +126,10 @@ public class ChartController {
 
             if (cpuSeries == null || tempSeries == null) return;
 
-            double cpuVal = parseValue(device.getCpuUsage());
-            double tempVal = parseValue(device.getTemperature());
+            double cpuVal = Device.parseMetricValue(device.getCpuUsage());
+            double tempVal = Device.parseMetricValue(device.getTemperature());
 
-            // Limitowanie do 30 punktów na urządzenie
-            if (cpuSeries.getData().size() > 30) {
+            if (cpuSeries.getData().size() >= 500) {
                 cpuSeries.getData().remove(0);
                 tempSeries.getData().remove(0);
             }
@@ -116,17 +165,6 @@ public class ChartController {
         tooltip.getStyleClass().add("chart-tooltip");
         tooltip.setShowDelay(javafx.util.Duration.ZERO);
         Tooltip.install(node, tooltip);
-    }
-
-    private double parseValue(String val) {
-        if (val == null || val.equals("-") || val.contains("Err") || val.isEmpty()) return 0;
-        try {
-            String clean = val.replaceAll("[^0-9.]", "");
-            if (clean.isEmpty()) return 0;
-            return Double.parseDouble(clean);
-        } catch (Exception e) {
-            return 0;
-        }
     }
 
     @FXML

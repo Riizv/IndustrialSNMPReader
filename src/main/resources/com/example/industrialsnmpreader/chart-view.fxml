@@ -12,6 +12,8 @@
     <HBox alignment="CENTER_LEFT" spacing="15">
         <Label text="Globalny Monitor Wydajności" style="-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: #24292f;"/>
         <Region HBox.hgrow="ALWAYS"/>
+        <Label text="Urządzenie:"/>
+        <ComboBox fx:id="deviceFilter" prefWidth="220"/>
         <Button text="Zamknij" onAction="#onClose" styleClass="button-delete"/>
     </HBox>
 

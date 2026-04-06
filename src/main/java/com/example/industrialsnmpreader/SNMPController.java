@@ -10,6 +10,22 @@ import org.snmp4j.transport.DefaultUdpTransportMapping;
 
 public class SNMPController {
 
+    private static volatile USM sharedUsm;
+    private static final Object USM_LOCK = new Object();
+
+    private static USM getOrCreateUsm() {
+        if (sharedUsm == null) {
+            synchronized (USM_LOCK) {
+                if (sharedUsm == null) {
+                    byte[] localEngineID = MPv3.createLocalEngineID();
+                    sharedUsm = new USM(SecurityProtocols.getInstance(), new OctetString(localEngineID), 0);
+                    SecurityModels.getInstance().addSecurityModel(sharedUsm);
+                }
+            }
+        }
+        return sharedUsm;
+    }
+
     public static class VendorOids {
         public final String hostnameOid;
         public final String tempOid;
@@ -59,20 +75,18 @@ public class SNMPController {
 
             if (device.getSnmpVersion() == 3) {
                 // Konfiguracja SNMP v3
-                byte[] localEngineID = MPv3.createLocalEngineID();
-                USM usm = new USM(SecurityProtocols.getInstance(), new OctetString(localEngineID), 0);
-                SecurityModels.getInstance().addSecurityModel(usm);
-                
+                USM usm = getOrCreateUsm();
+
                 OID authProtocol = getAuthProtocol(device.getAuthProtocol());
                 OID privProtocol = getPrivProtocol(device.getPrivProtocol());
-                
+
                 UsmUser user = new UsmUser(
                         new OctetString(device.getSecurityName()),
                         authProtocol, new OctetString(device.getAuthPassphrase()),
                         privProtocol, new OctetString(device.getPrivPassphrase())
                 );
-                
-                snmp.getUSM().addUser(new OctetString(device.getSecurityName()), user);
+
+                usm.addUser(new OctetString(device.getSecurityName()), user);
 
                 UserTarget<Address> utarget = new UserTarget<>();
                 utarget.setSecurityLevel(getSecurityLevel(device));

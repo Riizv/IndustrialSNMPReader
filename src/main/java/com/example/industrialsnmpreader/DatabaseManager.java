@@ -1,8 +1,13 @@
 package com.example.industrialsnmpreader;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 public class DatabaseManager {
@@ -12,6 +17,17 @@ public class DatabaseManager {
         initializeDatabasePath();
         createTableIfNotExist();
         upgradeTableIfNeeded();
+        createUsersTableIfNotExist();
+        seedAdminIfEmpty();
+    }
+
+    // Package-private — for use by tests only
+    static void setDbUrlForTesting(String url) {
+        dbUrl = url;
+        createTableIfNotExist();
+        upgradeTableIfNeeded();
+        createUsersTableIfNotExist();
+        seedAdminIfEmpty();
     }
 
     private static void initializeDatabasePath() {
@@ -28,7 +44,7 @@ public class DatabaseManager {
         }
 
         File directory = new File(path);
-        
+
         if (!directory.exists()) {
             boolean created = directory.mkdirs();
             if (!created) {
@@ -65,8 +81,9 @@ public class DatabaseManager {
                         "priv_protocol TEXT DEFAULT 'NONE', " +
                         "priv_passphrase TEXT DEFAULT ''" +
                         ");";
-                Statement stmt = conn.createStatement();
-                stmt.execute(createTable);
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute(createTable);
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -83,19 +100,87 @@ public class DatabaseManager {
             "priv_protocol TEXT DEFAULT 'NONE'",
             "priv_passphrase TEXT DEFAULT ''"
         };
-        
+
         try (Connection conn = DriverManager.getConnection(dbUrl)) {
             for (String col : columns) {
-                String colName = col.split(" ")[0];
-                try {
-                    Statement stmt = conn.createStatement();
+                try (Statement stmt = conn.createStatement()) {
                     stmt.execute("ALTER TABLE devices ADD COLUMN " + col);
                 } catch (SQLException e) {
-                    // Ignorujemy błąd jeśli kolumna już istnieje
+                    // column already exists — ignore
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    private static void createUsersTableIfNotExist() {
+        String sql = "CREATE TABLE IF NOT EXISTS users (" +
+                "username TEXT PRIMARY KEY, " +
+                "salt TEXT NOT NULL, " +
+                "hash TEXT NOT NULL" +
+                ");";
+        try (Connection conn = DriverManager.getConnection(dbUrl);
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void seedAdminIfEmpty() {
+        String countSql = "SELECT COUNT(*) FROM users";
+        try (Connection conn = DriverManager.getConnection(dbUrl);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(countSql)) {
+            if (rs.next() && rs.getInt(1) == 0) {
+                String salt = generateSalt();
+                String hash = sha256(salt + "admin123");
+                String insertSql = "INSERT INTO users(username, salt, hash) VALUES(?, ?, ?)";
+                try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+                    pstmt.setString(1, "admin");
+                    pstmt.setString(2, salt);
+                    pstmt.setString(3, hash);
+                    pstmt.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static boolean checkCredentials(String username, String password) {
+        if (username == null || password == null) return false;
+        String sql = "SELECT salt, hash FROM users WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(dbUrl);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String salt = rs.getString("salt");
+                    String storedHash = rs.getString("hash");
+                    return storedHash.equals(sha256(salt + password));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private static String generateSalt() {
+        byte[] bytes = new byte[16];
+        new SecureRandom().nextBytes(bytes);
+        return Base64.getEncoder().encodeToString(bytes);
+    }
+
+    private static String sha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not available", e);
         }
     }
 
@@ -139,9 +224,10 @@ public class DatabaseManager {
             pstmt.setString(1, ip);
             pstmt.setString(2, vendor);
             pstmt.executeUpdate();
-            ResultSet rs = pstmt.getGeneratedKeys();
-            if (rs.next()) {
-                return rs.getInt(1);
+            try (ResultSet rs = pstmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();

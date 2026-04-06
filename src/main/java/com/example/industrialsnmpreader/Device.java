@@ -1,8 +1,15 @@
 package com.example.industrialsnmpreader;
 
 import javafx.beans.property.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Device {
+
+    public record DataPoint(String time, double cpu, double temperature) {}
+
+    private static final int MAX_HISTORY = 500;
+    private final List<DataPoint> history = new ArrayList<>();
     private final IntegerProperty id;
     private final StringProperty ipAddress;
     private final StringProperty hostname;
@@ -70,6 +77,26 @@ public class Device {
     public void setUptime(String up) { this.uptime.set(up); }
     public void setCpuUsage(String cpu) { this.cpuUsage.set(cpu); }
     public void setLastUpdate(String time) { this.lastUpdate.set(time); }
+
+    public synchronized void addHistoryPoint(String time, double cpu, double temperature) {
+        if (history.size() >= MAX_HISTORY) history.remove(0);
+        history.add(new DataPoint(time, cpu, temperature));
+    }
+
+    public synchronized List<DataPoint> getHistory() {
+        return List.copyOf(history);
+    }
+
+    static double parseMetricValue(String val) {
+        if (val == null || val.equals("-") || val.contains("Err") || val.isEmpty()) return 0;
+        try {
+            String clean = val.replaceAll("[^0-9.]", "");
+            if (clean.isEmpty()) return 0;
+            return Double.parseDouble(clean);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
 
     public void setSnmpSettings(int version, String comm, String user, String aProt, String aPass, String pProt, String pPass) {
         this.snmpVersion.set(version);

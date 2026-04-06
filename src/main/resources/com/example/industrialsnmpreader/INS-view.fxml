@@ -1,17 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.input.KeyCodeCombination?>
 
 
 <BorderPane prefHeight="500.0" prefWidth="900.0" xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.example.industrialsnmpreader.IndustrialSNMPController"
             stylesheets="@style.css">
     <top>
-        <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: #004990; -fx-padding: 15;">
-            <Label text="Industrial SNMP Monitor" textFill="WHITE" style="-fx-font-size: 20; -fx-font-weight: bold;"/>
-            <Region HBox.hgrow="ALWAYS"/>
-            <Button text="Wyloguj" onAction="#onLogoutClick" styleClass="button-logout"/>
-        </HBox>
+        <VBox>
+            <!-- useSystemMenuBar=true → macOS: pasek systemowy; Linux: wewnątrz okna -->
+            <MenuBar useSystemMenuBar="true">
+                <Menu text="Plik">
+                    <MenuItem text="Odśwież" onAction="#onRefresh">
+                        <accelerator><KeyCodeCombination code="R" shift="UP" control="UP" alt="UP" meta="UP" shortcut="DOWN"/></accelerator>
+                    </MenuItem>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Wyloguj" onAction="#onLogoutClick">
+                        <accelerator><KeyCodeCombination code="O" shift="UP" control="UP" alt="UP" meta="UP" shortcut="DOWN"/></accelerator>
+                    </MenuItem>
+                </Menu>
+                <Menu text="Urządzenia">
+                    <MenuItem text="Dodaj urządzenie" onAction="#onAddDevice">
+                        <accelerator><KeyCodeCombination code="N" shift="UP" control="UP" alt="UP" meta="UP" shortcut="DOWN"/></accelerator>
+                    </MenuItem>
+                    <MenuItem text="Ustawienia SNMP" onAction="#onEditSnmpSettings">
+                        <accelerator><KeyCodeCombination code="COMMA" shift="UP" control="UP" alt="UP" meta="UP" shortcut="DOWN"/></accelerator>
+                    </MenuItem>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Usuń urządzenie" onAction="#onDeleteDevice">
+                        <accelerator><KeyCodeCombination code="BACK_SPACE" shift="UP" control="UP" alt="UP" meta="UP" shortcut="DOWN"/></accelerator>
+                    </MenuItem>
+                </Menu>
+                <Menu text="Widok">
+                    <MenuItem text="Pokaż wykres" onAction="#onShowChart">
+                        <accelerator><KeyCodeCombination code="G" shift="UP" control="UP" alt="UP" meta="UP" shortcut="DOWN"/></accelerator>
+                    </MenuItem>
+                </Menu>
+            </MenuBar>
+            <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: #004990; -fx-padding: 15;">
+                <Label text="Industrial SNMP Monitor" textFill="WHITE" style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="Wyloguj" onAction="#onLogoutClick" styleClass="button-logout"/>
+            </HBox>
+        </VBox>
     </top>
     <center>
         <SplitPane dividerPositions="0.7">
